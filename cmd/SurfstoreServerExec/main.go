@@ -105,7 +105,7 @@ func startServer(hostAddr string, serviceType string, blockStoreAddrs []string) 
 		}
 		s := grpc.NewServer()
 		ss.RegisterBlockStoreServer(s, ss.NewBlockStore())
-		fmt.Printf("Block server listening at %v", lis.Addr())
+		fmt.Printf("Block server listening at %v \n", lis.Addr())
 		if err := s.Serve(lis); err != nil {
 			fmt.Printf("failed to serve: %v", err)
 			return err
@@ -121,7 +121,7 @@ func startServer(hostAddr string, serviceType string, blockStoreAddrs []string) 
 		s := grpc.NewServer()
 		ss.RegisterMetaStoreServer(s, ss.NewMetaStore(blockStoreAddrs))
 		ss.RegisterBlockStoreServer(s, ss.NewBlockStore())
-		fmt.Printf("Meta and Block server listening at %v", lis.Addr())
+		fmt.Printf("Meta and Block server listening at %v \n", lis.Addr())
 		if err := s.Serve(lis); err != nil {
 			fmt.Printf("failed to serve: %v", err)
 			return err

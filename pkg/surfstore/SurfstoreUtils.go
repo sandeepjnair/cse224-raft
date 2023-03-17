@@ -1,6 +1,7 @@
 package surfstore
 
 import (
+	"fmt"
 	"io"
 	"io/ioutil"
 	"os"
@@ -32,7 +33,7 @@ func ClientSync(client RPCClient) {
 	//		4a. if the remote has a new file download and update local index
 	//		4b. if local has new then upload and update server with new file info. If version is okay and update
 	// 		succesful then update local.
-
+	fmt.Println("ClientSync called with metaStoreAddr:", client.MetaStoreAddrs, " and baseDir:", client.BaseDir)
 	//-------------------1, 1.1 and 2.-------------------
 	index_present := getIndexPresence(client.BaseDir)
 	localIndex := make(map[string]*FileMetaData)
@@ -52,17 +53,18 @@ func ClientSync(client RPCClient) {
 	// tombstone records for stuff present in localIndex but not in localrealityindex
 	localRealityIndex := getLocalRealityIndex(client, localIndex)
 
-	//print files in localRealityIndex
-	//fmt.Println("files in localRealityIndex at the start of client sync:")
+	// print files in localRealityIndex
+	// fmt.Println("files in localRealityIndex at the start of client sync:")
 	// for filename := range localRealityIndex {
-	// 	//fmt.Println("filename:", filename)
+	// 	fmt.Println("filename:", filename)
 	// }
 
 	// err = WriteMetaFile(localRealityIndex, client.BaseDir) // DELETE THIS LINE LATER. its FOR TESTING!!!!!!!!!!!!!!!!!!!!!!!
 	if !index_present {
+		fmt.Println("index.db is not present, being created now")
 		err := WriteMetaFile(localRealityIndex, client.BaseDir)
 		if err != nil {
-			//fmt.Println("Error creating new index.db -- inside ClientSync")
+			fmt.Println("Error creating new index.db -- inside ClientSync")
 		}
 	}
 
@@ -71,9 +73,9 @@ func ClientSync(client RPCClient) {
 	remoteIndex := make(map[string]*FileMetaData)
 	err = client.GetFileInfoMap(&remoteIndex)
 	if err != nil {
-		//fmt.Println("Error getting remote index -- inside ClientSync")
+		fmt.Println("Error getting remote index -- inside ClientSync", err)
 	}
-
+	fmt.Println("remoteIndex:", remoteIndex)
 	// go through every file in remoteIndex
 	//fmt.Println("files in remote index at the start of client sync:")
 	for filename, remoteFileMetaData := range remoteIndex {
@@ -257,7 +259,6 @@ func getLocalRealityIndex(client RPCClient, localIndex map[string]*FileMetaData)
 			var blockStoreAddrs *[]string = new([]string)
 			err = client.GetBlockStoreAddrs(blockStoreAddrs)
 			ConsistentHashRing := NewConsistentHashRing(*blockStoreAddrs)
-			// //fmt.Println("get block store addr called from client side and got: ", *blockStoreAddr)
 			if err != nil {
 				//fmt.Println("Error getting blockstore address -- inside getLocalRealityIndex")
 			}

@@ -1,9 +1,12 @@
 package SurfTest
 
 import (
-	emptypb "google.golang.org/protobuf/types/known/emptypb"
+	"fmt"
+	"log"
 	"os"
 	"testing"
+
+	emptypb "google.golang.org/protobuf/types/known/emptypb"
 	//	"time"
 )
 
@@ -13,11 +16,15 @@ func TestSyncTwoClientsSameFileLeaderFailure(t *testing.T) {
 	cfgPath := "./config_files/3nodes.txt"
 	test := InitTest(cfgPath)
 	defer EndTest(test)
+	fmt.Println("test1")
 	test.Clients[0].SetLeader(test.Context, &emptypb.Empty{})
+	fmt.Println("test2")
 	test.Clients[0].SendHeartbeat(test.Context, &emptypb.Empty{})
+	fmt.Println("test3")
 
 	worker1 := InitDirectoryWorker("test0", SRC_PATH)
 	worker2 := InitDirectoryWorker("test1", SRC_PATH)
+
 	defer worker1.CleanUp()
 	defer worker2.CleanUp()
 
@@ -48,13 +55,19 @@ func TestSyncTwoClientsSameFileLeaderFailure(t *testing.T) {
 	test.Clients[0].Crash(test.Context, &emptypb.Empty{})
 	test.Clients[1].SetLeader(test.Context, &emptypb.Empty{})
 	test.Clients[1].SendHeartbeat(test.Context, &emptypb.Empty{})
-
+	fmt.Println("-----------------------Internal state of metastore 0 before client 2 sync")
+	test.Clients[0].GetInternalState(test.Context, &emptypb.Empty{})
 	//client2 syncs
 	err = SyncClient("localhost:8080", "test1", BLOCK_SIZE, cfgPath)
 	if err != nil {
-		t.Fatalf("Sync failed")
+		t.Fatalf("Sync failed with error: %v", err)
+		log.Fatal("stopping here1")
 	}
-
+	fmt.Println("-----------------------Internal state of metastore 0")
+	test.Clients[0].GetInternalState(test.Context, &emptypb.Empty{})
+	fmt.Println("-----------------------Internal state of metastore 1")
+	test.Clients[1].GetInternalState(test.Context, &emptypb.Empty{})
+	// log.Fatal("stopping here2")
 	test.Clients[1].SendHeartbeat(test.Context, &emptypb.Empty{})
 
 	//client1 syncs

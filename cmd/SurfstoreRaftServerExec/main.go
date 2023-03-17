@@ -25,6 +25,7 @@ func main() {
 }
 
 func startServer(id int64, config surfstore.RaftConfig) error {
+	// start ith server in the config file and serve it
 	raftServer, err := surfstore.NewRaftServer(id, config)
 	if err != nil {
 		log.Fatal("Error creating servers")

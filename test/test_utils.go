@@ -291,7 +291,7 @@ func StartSurfServers(servers []*exec.Cmd, ready chan bool) {
 	for _, server := range servers {
 		err := server.Start()
 		if err != nil {
-			log.Println(err)
+			fmt.Println(err)
 		}
 	}
 
@@ -310,7 +310,7 @@ func SyncClient(metaAddr, baseDir string, blockSize int, cfgPath string) error {
 	clientCmd := exec.Command("_bin/SurfstoreClientExec", "-f", cfgPath, baseDir, strconv.Itoa(blockSize))
 	clientCmd.Stderr = os.Stderr
 	clientCmd.Stdout = os.Stdout
-
+	fmt.Println("Syncing client with meta server at", metaAddr)
 	return clientCmd.Run()
 }
 

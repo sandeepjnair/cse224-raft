@@ -28,10 +28,9 @@ func (m *MetaStore) UpdateFile(ctx context.Context, fileMetaData *FileMetaData) 
 	// going to change the FileMetaData in the FileMetaMap direclty if version is exactly one more than the
 	// current version else returns -1 as version. if file is new then set version
 	_, ok := m.FileMetaMap[fileMetaData.Filename]
-	fmt.Println("update file called from server")
 
 	if !ok {
-		//case when file is new we just add it to the fileMetaMap. Note here we're not checking if version is 1 or 0
+		// case when file is new we just add it to the fileMetaMap. Note here we're not checking if version is 1 or 0
 		// we'll add it even if it comes with a verison of 2 as long as its new. This shouldn't be a problem but keep
 		// in mind
 		m.FileMetaMap[fileMetaData.Filename] = fileMetaData
@@ -66,7 +65,7 @@ func (m *MetaStore) UpdateFile(ctx context.Context, fileMetaData *FileMetaData) 
 
 func (m *MetaStore) GetBlockStoreMap(ctx context.Context, blockHashesIn *BlockHashes) (*BlockStoreMap, error) {
 	// returns a map of data blockhashes to blockstore addresses
-	panic("todo")
+	panic("to_do")
 }
 
 func (m *MetaStore) GetBlockStoreAddrs(ctx context.Context, _ *emptypb.Empty) (*BlockStoreAddrs, error) {

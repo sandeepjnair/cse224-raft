@@ -63,7 +63,7 @@ func main() {
 		os.Exit(EX_USAGE)
 	}
 
-	log.Println("Client syncing with ", addrs, baseDir, blockSize)
+	fmt.Println("Client syncing with ", addrs, baseDir, blockSize)
 
 	// Disable log outputs if debug flag is missing
 	if !(*debug) {

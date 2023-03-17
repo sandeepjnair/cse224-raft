@@ -3,6 +3,7 @@ package surfstore
 import (
 	context "context"
 	"fmt"
+	"strings"
 	"time"
 
 	grpc "google.golang.org/grpc"
@@ -124,28 +125,38 @@ func (surfClient *RPCClient) GetFileInfoMap(serverFileInfoMap *map[string]*FileM
 	//function to get the file info map from the metadata server
 
 	// connect to the server
-	conn, err := grpc.Dial(surfClient.MetaStoreAddrs[0], grpc.WithInsecure())
-	if err != nil {
-		return err
-	}
-	c := NewRaftSurfstoreClient(conn)
+	// to_do need to connect to leader below instead of first address
+	for i := 0; i < len(surfClient.MetaStoreAddrs); {
+		conn, err := grpc.Dial(surfClient.MetaStoreAddrs[i], grpc.WithInsecure())
+		if err != nil {
+			return err
+		}
+		c := NewRaftSurfstoreClient(conn)
 
-	// perform the call
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
-	defer cancel()
+		// perform the call
+		ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+		defer cancel()
 
-	remote_index, err := c.GetFileInfoMap(ctx, &emptypb.Empty{})
-	if remote_index.FileInfoMap == nil {
-		remote_index.FileInfoMap = make(map[string]*FileMetaData)
-	}
-	*serverFileInfoMap = remote_index.FileInfoMap
+		remote_index, err := c.GetFileInfoMap(ctx, &emptypb.Empty{})
+		if err != nil {
+			// fmt.Println("debug err after getblockstoreaddrs call at client side:", err, "ERR_SERVER_CRASHED", ERR_SERVER_CRASHED.Error(), "bool check:", strings.Contains(err.Error(), "Server is crashed."))
+			if strings.Contains(err.Error(), "Server is not the leader") || strings.Contains(err.Error(), "Server is crashed.") {
+				i = (i + 1) % len(surfClient.MetaStoreAddrs)
+				continue
+			}
+			conn.Close()
+			return err
+		}
+		if remote_index.FileInfoMap == nil {
+			remote_index.FileInfoMap = make(map[string]*FileMetaData)
+		}
+		*serverFileInfoMap = remote_index.FileInfoMap
 
-	if err != nil {
-		conn.Close()
-		return err
+		// close the connection
+		return conn.Close()
 	}
-	// close the connection
-	return conn.Close()
+
+	return nil
 
 }
 
@@ -153,53 +164,70 @@ func (surfClient *RPCClient) UpdateFile(fileMetaData *FileMetaData, latestVersio
 	//function to call to update the remote index with the latest version of some file from client
 	// it will put inside latestversion the version of the file that was updated, if it returns -1 then the
 	// update wasn't successful and the client needs to handle it
+	for i := 0; i < len(surfClient.MetaStoreAddrs); {
+		// connect to the server
+		conn, err := grpc.Dial(surfClient.MetaStoreAddrs[i], grpc.WithInsecure())
+		if err != nil {
+			return err
+		}
+		c := NewRaftSurfstoreClient(conn)
 
-	// connect to the server
-	conn, err := grpc.Dial(surfClient.MetaStoreAddrs[0], grpc.WithInsecure())
-	if err != nil {
-		return err
+		// perform the call
+		ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+		defer cancel()
+
+		version, err := c.UpdateFile(ctx, fileMetaData)
+		if err != nil {
+			// fmt.Println("debug err after getblockstoreaddrs call at client side:", err, "ERR_SERVER_CRASHED", ERR_SERVER_CRASHED.Error(), "bool check:", strings.Contains(err.Error(), "Server is crashed."))
+			if strings.Contains(err.Error(), "Server is not the leader") || strings.Contains(err.Error(), "Server is crashed.") {
+				i = (i + 1) % len(surfClient.MetaStoreAddrs)
+				continue
+			}
+			conn.Close()
+			return err
+		}
+		latestVersion = &version.Version
+
+		// close the connection
+		return conn.Close()
 	}
-	c := NewRaftSurfstoreClient(conn)
 
-	// perform the call
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
-	defer cancel()
-
-	version, err := c.UpdateFile(ctx, fileMetaData)
-	latestVersion = &version.Version
-
-	if err != nil {
-		conn.Close()
-		return err
-	}
-	// close the connection
-	return conn.Close()
+	return nil
 }
 
 func (surfClient *RPCClient) GetBlockStoreAddrs(blockStoreAddrs *[]string) error {
 	//function to call the server implementation of GetBlockStoreAddrs to get blockstore addresses from metastore
 
-	// connect to the server
-	conn, err := grpc.Dial(surfClient.MetaStoreAddrs[0], grpc.WithInsecure())
-	if err != nil {
-		return err
+	for i := 0; i < len(surfClient.MetaStoreAddrs); {
+		// connect to the server
+		conn, err := grpc.Dial(surfClient.MetaStoreAddrs[i], grpc.WithInsecure())
+		if err != nil {
+			return err
+		}
+		c := NewRaftSurfstoreClient(conn)
+
+		// perform the call
+		ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+		defer cancel()
+
+		BlockStoreAddrs, err := c.GetBlockStoreAddrs(ctx, &emptypb.Empty{})
+
+		if err != nil {
+			// fmt.Println("debug err after getblockstoreaddrs call at client side:", err, "ERR_SERVER_CRASHED", ERR_SERVER_CRASHED.Error(), "bool check:", strings.Contains(err.Error(), "Server is crashed."))
+			if strings.Contains(err.Error(), "Server is not the leader") || strings.Contains(err.Error(), "Server is crashed.") {
+				i = (i + 1) % len(surfClient.MetaStoreAddrs)
+				continue
+			}
+			conn.Close()
+			return err
+		}
+		*blockStoreAddrs = BlockStoreAddrs.BlockStoreAddrs
+
+		// close the connection
+		return conn.Close()
 	}
-	c := NewRaftSurfstoreClient(conn)
 
-	// perform the call
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
-	defer cancel()
-
-	BlockStoreAddrs, err := c.GetBlockStoreAddrs(ctx, &emptypb.Empty{})
-	*blockStoreAddrs = BlockStoreAddrs.BlockStoreAddrs
-
-	if err != nil {
-		conn.Close()
-		return err
-	}
-	// close the connection
-	return conn.Close()
-
+	return nil
 }
 
 // func (surfClient *RPCClient) GetBlockStoreAddr(blockStoreAddr *string) error {
