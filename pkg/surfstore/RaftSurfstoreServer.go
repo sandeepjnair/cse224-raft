@@ -155,57 +155,61 @@ func (s *RaftSurfstore) UpdateFile(ctx context.Context, filemeta *FileMetaData) 
 func (s *RaftSurfstore) AppendEntries(ctx context.Context, input *AppendEntryInput) (*AppendEntryOutput, error) {
 	// what does LeaderCommit mean and do? - latest commit index of the leader
 	// does entries contain the entire log or just the new entries? - just the new entries
-
-	// 1. Reply false if term < currentTerm (§5.1)
-	if input.Term < s.term {
-		// returning the current term and status of false
-		return &AppendEntryOutput{Term: s.term, Success: false}, nil
-	}
-	// if your term is less than the leader's term, you need to update your term
-	if input.Term > s.term {
-		s.term = input.Term
-	}
-	// if input.prevLogIndex is greater than the length of the log, then return false
-	// need to get a longer inputEntries to append
-	if input.PrevLogIndex > int64(len(s.log)-1) {
-		return &AppendEntryOutput{Term: s.term, Success: false}, nil
-	}
-
-	// 2. Reply false if log doesn’t contain an entry at prevLogIndex whose term
-	// matches prevLogTerm (§5.3)
-	if s.log[input.PrevLogIndex].Term != input.PrevLogTerm {
-		return &AppendEntryOutput{Term: s.term, Success: false}, nil
-	}
-	// ideal case where the prevLogIndex and prevLogTerm match with last entry in the log
-	if input.PrevLogIndex == int64(len(s.log)-1) && s.log[input.PrevLogIndex].Term == input.PrevLogTerm {
-		// 4. Append any new entries not already in the log
-		s.log = append(s.log, input.Entries...)
-		// 5. If leaderCommit > commitIndex, set commitIndex = min(leaderCommit, index
-		// of last new entry) and call update file on the metaStore
-		s.commitIndex = input.LeaderCommit
-		if s.log[len(s.log)-1].FileMetaData != nil {
-			s.metaStore.UpdateFile(ctx, s.log[len(s.log)-1].FileMetaData)
+	if s.isCrashed {
+		// if server is crashed, return ERR_SERVER_CRASHED
+		return &AppendEntryOutput{Term: s.term, Success: false}, ERR_SERVER_CRASHED
+	} else {
+		// 1. Reply false if term < currentTerm (§5.1)
+		if input.Term < s.term {
+			// returning the current term and status of false
+			return &AppendEntryOutput{Term: s.term, Success: false}, nil
 		}
-		return &AppendEntryOutput{ServerId: s.serverId, Term: s.term, Success: true, MatchedIndex: input.PrevLogIndex + 1}, nil
-	}
-	// 3. If an existing entry conflicts with a new one (same index but different
-	// terms), delete the existing entry and all that follow it (§5.3)
-	if int64(len(s.log)-1) > input.PrevLogIndex {
-		// delete all entries after prevLogIndex
-		s.log = s.log[:input.PrevLogIndex+1]
-		// append everything in input.Entries from where the log matched
-		// 4. Append any new entries not already in the log
-		s.log = append(s.log, input.Entries...)
-		// 5. If leaderCommit > commitIndex, set commitIndex = min(leaderCommit, index
-		// of last new entry) and call update file on the metaStore
-		s.commitIndex = input.LeaderCommit
-		if s.log[len(s.log)-1].FileMetaData != nil {
-			s.metaStore.UpdateFile(ctx, s.log[len(s.log)-1].FileMetaData)
+		// if your term is less than the leader's term, you need to update your term
+		if input.Term > s.term {
+			s.term = input.Term
 		}
-		return &AppendEntryOutput{ServerId: s.serverId, Term: s.term, Success: true, MatchedIndex: input.PrevLogIndex + 1}, nil
-	}
+		// if input.prevLogIndex is greater than the length of the log, then return false
+		// need to get a longer inputEntries to append
+		if input.PrevLogIndex > int64(len(s.log)-1) {
+			return &AppendEntryOutput{Term: s.term, Success: false}, nil
+		}
 
-	return nil, nil
+		// 2. Reply false if log doesn’t contain an entry at prevLogIndex whose term
+		// matches prevLogTerm (§5.3)
+		if s.log[input.PrevLogIndex].Term != input.PrevLogTerm {
+			return &AppendEntryOutput{Term: s.term, Success: false}, nil
+		}
+		// ideal case where the prevLogIndex and prevLogTerm match with last entry in the log
+		if input.PrevLogIndex == int64(len(s.log)-1) && s.log[input.PrevLogIndex].Term == input.PrevLogTerm {
+			// 4. Append any new entries not already in the log
+			s.log = append(s.log, input.Entries...)
+			// 5. If leaderCommit > commitIndex, set commitIndex = min(leaderCommit, index
+			// of last new entry) and call update file on the metaStore
+			s.commitIndex = input.LeaderCommit
+			if s.log[len(s.log)-1].FileMetaData != nil {
+				s.metaStore.UpdateFile(ctx, s.log[len(s.log)-1].FileMetaData)
+			}
+			return &AppendEntryOutput{ServerId: s.serverId, Term: s.term, Success: true, MatchedIndex: input.PrevLogIndex + 1}, nil
+		}
+		// 3. If an existing entry conflicts with a new one (same index but different
+		// terms), delete the existing entry and all that follow it (§5.3)
+		if int64(len(s.log)-1) > input.PrevLogIndex {
+			// delete all entries after prevLogIndex
+			s.log = s.log[:input.PrevLogIndex+1]
+			// append everything in input.Entries from where the log matched
+			// 4. Append any new entries not already in the log
+			s.log = append(s.log, input.Entries...)
+			// 5. If leaderCommit > commitIndex, set commitIndex = min(leaderCommit, index
+			// of last new entry) and call update file on the metaStore
+			s.commitIndex = input.LeaderCommit
+			if s.log[len(s.log)-1].FileMetaData != nil {
+				s.metaStore.UpdateFile(ctx, s.log[len(s.log)-1].FileMetaData)
+			}
+			return &AppendEntryOutput{ServerId: s.serverId, Term: s.term, Success: true, MatchedIndex: input.PrevLogIndex + 1}, nil
+		}
+
+		return nil, nil
+	}
 }
 
 func (s *RaftSurfstore) SetLeader(ctx context.Context, _ *emptypb.Empty) (*Success, error) {
@@ -216,7 +220,7 @@ func (s *RaftSurfstore) SetLeader(ctx context.Context, _ *emptypb.Empty) (*Succe
 
 	// incrementing the term new leader is operating in
 	s.term += 1
-
+	fmt.Println("Leader is now: ", s.serverId, " in term: ", s.term, " with commitIndex: ", s.commitIndex)
 	return &Success{Flag: true}, nil
 }
 
@@ -231,8 +235,11 @@ func (s *RaftSurfstore) SendHeartbeat(ctx context.Context, _ *emptypb.Empty) (*S
 	// The leader will attempt to replicate logs to all other
 	// nodes when this is called. It can be called even when
 	// there are no entries to replicate. If a node is not in the leader state it should do nothing.
+	fmt.Println("Sending heartbeat called from: ", s.serverId, "s.isLeader: ", s.isLeader)
 	if !s.isLeader {
 		return nil, ERR_NOT_LEADER
+	} else if s.isCrashed {
+		return nil, ERR_SERVER_CRASHED
 	}
 	// need to create a channel and call appendEntries goroutines on all the servers which return to the channel
 	// if a majority responsd positively then return true else false.
