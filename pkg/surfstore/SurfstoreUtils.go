@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
+	"log"
 	"os"
 	"path/filepath"
 	"reflect"
@@ -260,7 +261,8 @@ func getLocalRealityIndex(client RPCClient, localIndex map[string]*FileMetaData)
 			err = client.GetBlockStoreAddrs(blockStoreAddrs)
 			ConsistentHashRing := NewConsistentHashRing(*blockStoreAddrs)
 			if err != nil {
-				//fmt.Println("Error getting blockstore address -- inside getLocalRealityIndex")
+				fmt.Println("Error getting blockstore address -- inside getLocalRealityIndex")
+				log.Fatal(err)
 			}
 			var succ *bool = new(bool)
 			//sync the block to the blockstore if needed

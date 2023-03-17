@@ -3,6 +3,7 @@ package surfstore
 import (
 	context "context"
 	"fmt"
+	"log"
 	"strings"
 	"sync"
 
@@ -262,14 +263,14 @@ func (s *RaftSurfstore) SendHeartbeat(ctx context.Context, _ *emptypb.Empty) (*S
 
 	// now we need to wait for a majority of the servers to respond with true on result channel
 	positive_responses := 1
+	total_responses := 1
 	for {
 		select {
 		case result := <-resultChan:
+			total_responses += 1
 			if result {
 				positive_responses += 1
-			} else {
 			}
-
 		}
 		if positive_responses > len(s.RaftAddrs)/2 {
 			s.commitIndex = int64(len(s.log) - 1)
@@ -277,6 +278,10 @@ func (s *RaftSurfstore) SendHeartbeat(ctx context.Context, _ *emptypb.Empty) (*S
 				s.metaStore.UpdateFile(ctx, s.log[len(s.log)-1].FileMetaData)
 			}
 			return &Success{Flag: true}, nil
+		} else if total_responses == len(s.RaftAddrs) {
+			fmt.Println("majority of servers have crashed")
+			log.Fatal()
+			return &Success{Flag: false}, nil
 		}
 	}
 
