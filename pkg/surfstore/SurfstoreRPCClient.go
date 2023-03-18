@@ -213,7 +213,7 @@ func (surfClient *RPCClient) GetBlockStoreAddrs(blockStoreAddrs *[]string) error
 		BlockStoreAddrs, err := c.GetBlockStoreAddrs(ctx, &emptypb.Empty{})
 
 		if err != nil {
-			// fmt.Println("debug err after getblockstoreaddrs call at client side:", err, "ERR_SERVER_CRASHED", ERR_SERVER_CRASHED.Error(), "bool check:", strings.Contains(err.Error(), "Server is crashed."))
+			fmt.Println("debug err after getblockstoreaddrs call at client side:", err)
 			if strings.Contains(err.Error(), "Server is not the leader") || strings.Contains(err.Error(), "Server is crashed.") {
 				i = (i + 1) % len(surfClient.MetaStoreAddrs)
 				continue

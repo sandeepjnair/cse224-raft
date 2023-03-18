@@ -77,6 +77,7 @@ func (s *RaftSurfstore) GetBlockStoreAddrs(ctx context.Context, empty *emptypb.E
 	// should return the correct answer; if a majority of the nodes are crashed,
 	// should block until a majority recover.  If not the leader, should indicate an
 	// error back to the client
+	fmt.Println("raftsurfstore.GetBlockStoreAddrs called on server ", s.serverId, " with isLeader: ", s.isLeader, " and isCrashed: ", s.isCrashed, "")
 	if !s.isLeader {
 		return nil, ERR_NOT_LEADER
 	} else if s.isCrashed {
@@ -104,16 +105,8 @@ func (s *RaftSurfstore) GetBlockStoreAddrs(ctx context.Context, empty *emptypb.E
 }
 
 func (s *RaftSurfstore) UpdateFile(ctx context.Context, filemeta *FileMetaData) (*Version, error) {
-	fmt.Println("raftsurfstore.UpdateFile called")
-	// filemeta == nil comes when the leader wants to know if you're in crashed state
-	// will return nil if alive
-	if filemeta == nil {
-		if s.isCrashed {
-			return nil, ERR_SERVER_CRASHED
-		} else {
-			return nil, nil
-		}
-	}
+	fmt.Println("raftsurfstore.UpdateFile called with filemeta: ", filemeta)
+
 	// if you're not a leader, you need to give back a ERR_NOT_LEADER error
 	if !s.isLeader {
 		return nil, ERR_NOT_LEADER
@@ -156,7 +149,7 @@ func (s *RaftSurfstore) UpdateFile(ctx context.Context, filemeta *FileMetaData) 
 func (s *RaftSurfstore) AppendEntries(ctx context.Context, input *AppendEntryInput) (*AppendEntryOutput, error) {
 	// what does LeaderCommit mean and do? - latest commit index of the leader
 	// does entries contain the entire log or just the new entries? - just the new entries
-	fmt.Println("appendEntries called from: ", s.serverId, "s.isLeader: ", s.isLeader, "s.isCrashed: ", s.isCrashed)
+	fmt.Println("appendEntries called using server: ", s.serverId, "s.isLeader: ", s.isLeader, "s.isCrashed: ", s.isCrashed)
 
 	if s.isCrashed {
 		// if server is crashed, return ERR_SERVER_CRASHED
@@ -367,7 +360,8 @@ func (s *RaftSurfstore) callAppendEntries(idx int, addr string, resultChan chan 
 		LeaderCommit: s.commitIndex,
 	}
 	// append first element to input.Entries
-	input.Entries = append([]*UpdateOperation{s.log[len(s.log)-1]}, input.Entries...)
+	// input.Entries = append([]*UpdateOperation{s.log[len(s.log)-1]}, input.Entries...)
+	// commented above line as you don't want to initially send anything with input.Entries, if leader and server are in sync there's nothing to append
 	// inSync holds our understanding of whether the leader is inSync with idx server
 	inSync := false
 	// go into a for loop and keep looping till leader and idx server are in sync, keep trying until they're back online
@@ -387,8 +381,9 @@ func (s *RaftSurfstore) callAppendEntries(idx int, addr string, resultChan chan 
 		output, err := client.AppendEntries(context.Background(), input)
 		if err != nil {
 			if strings.Contains(err.Error(), "Server is crashed.") {
-				// if the server is crashed, keep trying
-				continue
+				fmt.Println("server with id", idx, " called from server with id", s.serverId, "is crashed")
+				resultChan <- false
+				return
 			} else {
 				fmt.Println("couldn't call appendEntries on server with id", idx,
 					"from server with id", s.serverId, "with error", err, "with addr", addr)
