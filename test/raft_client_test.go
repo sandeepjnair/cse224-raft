@@ -1,6 +1,7 @@
 package SurfTest
 
 import (
+	// "fmt"
 	"os"
 	"testing"
 

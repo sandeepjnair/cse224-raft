@@ -381,9 +381,10 @@ func (s *RaftSurfstore) callAppendEntries(idx int, addr string, resultChan chan 
 		output, err := client.AppendEntries(context.Background(), input)
 		if err != nil {
 			if strings.Contains(err.Error(), "Server is crashed.") {
-				fmt.Println("server with id", idx, " called from server with id", s.serverId, "is crashed")
-				resultChan <- false
-				return
+				// fmt.Println("server with id", idx, " called from server with id", s.serverId, "is crashed")
+				// resultChan <- false
+				// return
+				continue
 			} else {
 				fmt.Println("couldn't call appendEntries on server with id", idx,
 					"from server with id", s.serverId, "with error", err, "with addr", addr)
