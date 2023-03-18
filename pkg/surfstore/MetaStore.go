@@ -29,6 +29,8 @@ func (m *MetaStore) UpdateFile(ctx context.Context, fileMetaData *FileMetaData) 
 	// current version else returns -1 as version. if file is new then set version
 	_, ok := m.FileMetaMap[fileMetaData.Filename]
 
+	fmt.Println("update file from metastore called, files in filemetadata:", fileMetaData.Filename, "version:", fileMetaData.Version, "len of blockhashlist:", len(fileMetaData.BlockHashList))
+
 	if !ok {
 		// case when file is new we just add it to the fileMetaMap. Note here we're not checking if version is 1 or 0
 		// we'll add it even if it comes with a verison of 2 as long as its new. This shouldn't be a problem but keep
@@ -47,7 +49,7 @@ func (m *MetaStore) UpdateFile(ctx context.Context, fileMetaData *FileMetaData) 
 			return &Version{Version: fileMetaData.Version}, nil
 		} else {
 			// case in which versions don't match for proper update.
-			fmt.Println("version mismatch for update of file deleted in server")
+			fmt.Println("unsure version mismatch for update of file deleted in server")
 			return &Version{Version: -1}, nil
 		}
 	} else if ok && fileMetaData.BlockHashList[0] == "0" {

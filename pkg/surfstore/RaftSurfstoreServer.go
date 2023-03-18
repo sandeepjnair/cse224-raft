@@ -104,7 +104,7 @@ func (s *RaftSurfstore) GetBlockStoreAddrs(ctx context.Context, empty *emptypb.E
 }
 
 func (s *RaftSurfstore) UpdateFile(ctx context.Context, filemeta *FileMetaData) (*Version, error) {
-
+	fmt.Println("raftsurfstore.UpdateFile called")
 	// filemeta == nil comes when the leader wants to know if you're in crashed state
 	// will return nil if alive
 	if filemeta == nil {
@@ -156,6 +156,8 @@ func (s *RaftSurfstore) UpdateFile(ctx context.Context, filemeta *FileMetaData) 
 func (s *RaftSurfstore) AppendEntries(ctx context.Context, input *AppendEntryInput) (*AppendEntryOutput, error) {
 	// what does LeaderCommit mean and do? - latest commit index of the leader
 	// does entries contain the entire log or just the new entries? - just the new entries
+	fmt.Println("appendEntries called from: ", s.serverId, "s.isLeader: ", s.isLeader, "s.isCrashed: ", s.isCrashed)
+
 	if s.isCrashed {
 		// if server is crashed, return ERR_SERVER_CRASHED
 		return &AppendEntryOutput{Term: s.term, Success: false}, ERR_SERVER_CRASHED
@@ -356,7 +358,7 @@ func (s *RaftSurfstore) callAppendEntries(idx int, addr string, resultChan chan 
 	// you hope that append entries will verify that the last entry in your log is the same as the last entry in their log
 	// ensuring that you're in sync if not you decrememt your prevLogIndex and try again until you fins a point you're in
 	// sync and then you can replace the idx servers log with your (leader) log
-	fmt.Println("calling appendEntries on server with id", idx, "from server with id", s.serverId, "with term", s.term, "and len(s.log) of ", len(s.log), "and commitIndex of ", s.commitIndex, "PrevLogIndex:", int64(len(s.log)-1), "PrevLogTerm:", s.log[len(s.log)-1].Term)
+	fmt.Println(" inside callappendEntries on server with id", idx, "from server with id", s.serverId, "with term", s.term, "and len(s.log) of ", len(s.log), "and commitIndex of ", s.commitIndex, "PrevLogIndex:", int64(len(s.log)-1), "PrevLogTerm:", s.log[len(s.log)-1].Term)
 	input := &AppendEntryInput{
 		Term:         s.term,
 		PrevLogIndex: int64(len(s.log) - 1),
