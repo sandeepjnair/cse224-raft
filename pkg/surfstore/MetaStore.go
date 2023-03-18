@@ -39,6 +39,17 @@ func (m *MetaStore) UpdateFile(ctx context.Context, fileMetaData *FileMetaData) 
 		// version is exactly one above everything is hunky dory
 		m.FileMetaMap[fileMetaData.Filename] = fileMetaData
 		return &Version{Version: fileMetaData.Version}, nil
+	} else if ok && len(fileMetaData.BlockHashList) == 0 {
+		// !!!!!!!!!!!!added this if else block to handle testRaftfollowersgetupdates not sure if this is the right way to do it
+		// case in which server has the file but its empty. just take the version number from the client and update fileMetaMap
+		if fileMetaData.Version > m.FileMetaMap[fileMetaData.Filename].Version {
+			m.FileMetaMap[fileMetaData.Filename] = fileMetaData
+			return &Version{Version: fileMetaData.Version}, nil
+		} else {
+			// case in which versions don't match for proper update.
+			fmt.Println("version mismatch for update of file deleted in server")
+			return &Version{Version: -1}, nil
+		}
 	} else if ok && fileMetaData.BlockHashList[0] == "0" {
 		// case in which server has a tombstone of the file. just take the version number from the client and update fileMetaMap
 		if fileMetaData.Version > m.FileMetaMap[fileMetaData.Filename].Version {

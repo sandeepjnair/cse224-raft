@@ -301,7 +301,7 @@ func (s *RaftSurfstore) Restore(ctx context.Context, _ *emptypb.Empty) (*Success
 	s.isCrashedMutex.Lock()
 	s.isCrashed = false
 	s.isCrashedMutex.Unlock()
-
+	fmt.Println("restored server with id: ", s.serverId, "in term", s.term)
 	return &Success{Flag: true}, nil
 }
 
