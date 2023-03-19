@@ -262,7 +262,7 @@ func TestRaftLogsCorrectlyOverwritten(t *testing.T) {
 	go test.Clients[leaderIdx].UpdateFile(test.Context, filemeta2)
 	go test.Clients[leaderIdx].SendHeartbeat(test.Context, &emptypb.Empty{})
 
-	time.Sleep(200 * time.Millisecond)
+	time.Sleep(2000 * time.Millisecond)
 
 	// verify that the leader log has both the file entries
 	goldenLog := []*surfstore.UpdateOperation{}

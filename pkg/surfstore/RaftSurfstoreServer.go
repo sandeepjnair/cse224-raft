@@ -366,19 +366,19 @@ func (s *RaftSurfstore) callAppendEntries(idx int, addr string, resultChan chan 
 	// commented above line as you don't want to initially send anything with input.Entries, if leader and server are in sync there's nothing to append
 	// inSync holds our understanding of whether the leader is inSync with idx server
 	inSync := false
+	// connect to the server
+	conn, err := grpc.Dial(addr, grpc.WithInsecure())
+	if err != nil {
+		fmt.Println("couldn't connect to server with id", idx, "from server with id", s.serverId, "with error", err)
+		// if the server can't be connected to, keep trying
+	}
+	defer conn.Close()
+
+	client := NewRaftSurfstoreClient(conn)
 	// go into a for loop and keep looping till leader and idx server are in sync, keep trying until they're back online
 	for !inSync {
-		// connect to the server
-		conn, err := grpc.Dial(addr, grpc.WithInsecure())
-		if err != nil {
-			fmt.Println("couldn't connect to server with id", idx, "from server with id", s.serverId, "with error", err)
-			// if the server can't be connected to, keep trying
-			continue
-		}
-		defer conn.Close()
 
-		client := NewRaftSurfstoreClient(conn)
-		fmt.Println("trying to call appendEntries on server with id", idx, "using server with id", s.serverId, "with term", s.term, "and len(s.log) of ", len(s.log), "and commitIndex of ", s.commitIndex, "PrevLogIndex:", input.PrevLogIndex, "PrevLogTerm:", input.PrevLogTerm)
+		// fmt.Println("trying to call appendEntries on server with id", idx, "using server with id", s.serverId, "with term", s.term, "and len(s.log) of ", len(s.log), "and commitIndex of ", s.commitIndex, "PrevLogIndex:", input.PrevLogIndex, "PrevLogTerm:", input.PrevLogTerm)
 		// call appendEntries on the server
 		output, err := client.AppendEntries(context.Background(), input)
 		if err != nil {
