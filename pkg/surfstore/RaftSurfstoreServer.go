@@ -156,24 +156,29 @@ func (s *RaftSurfstore) AppendEntries(ctx context.Context, input *AppendEntryInp
 		// if server is crashed, return ERR_SERVER_CRASHED
 		return &AppendEntryOutput{Term: s.term, Success: false}, ERR_SERVER_CRASHED
 	} else {
-		// 1. Reply false if term < currentTerm (§5.1)
-		if input.Term < s.term {
-			// returning the current term and status of false
-			return &AppendEntryOutput{Term: s.term, Success: false}, nil
-		}
 		// if your term is less than the leader's term, you need to update your term
 		if input.Term > s.term {
 			s.term = input.Term
 		}
+
+		// 1. Reply false if term < currentTerm (§5.1)
+		if input.Term < s.term {
+			fmt.Println("appendEntries returned false as input.Term < s.term")
+			// returning the current term and status of false
+			return &AppendEntryOutput{Term: s.term, Success: false}, nil
+		}
+
 		// if input.prevLogIndex is greater than the length of the log, then return false
 		// need to get a longer inputEntries to append
 		if input.PrevLogIndex > int64(len(s.log)-1) {
+			fmt.Println("appendEntries returned false as input.PrevLogIndex > int64(len(s.log)-1)")
 			return &AppendEntryOutput{Term: s.term, Success: false}, nil
 		}
 
 		// 2. Reply false if log doesn’t contain an entry at prevLogIndex whose term
 		// matches prevLogTerm (§5.3)
 		if s.log[input.PrevLogIndex].Term != input.PrevLogTerm {
+			fmt.Println("appendEntries returned false as s.log[input.PrevLogIndex].Term != input.PrevLogTerm")
 			return &AppendEntryOutput{Term: s.term, Success: false}, nil
 		}
 		// ideal case where the prevLogIndex and prevLogTerm match with last entry in the log
@@ -302,7 +307,7 @@ func (s *RaftSurfstore) Restore(ctx context.Context, _ *emptypb.Empty) (*Success
 }
 
 func (s *RaftSurfstore) GetInternalState(ctx context.Context, empty *emptypb.Empty) (*RaftInternalState, error) {
-	time.Sleep(2000 * time.Millisecond)
+	time.Sleep(1000 * time.Millisecond)
 	fileInfoMap, _ := s.metaStore.GetFileInfoMap(ctx, empty)
 	s.isLeaderMutex.RLock()
 	state := &RaftInternalState{
