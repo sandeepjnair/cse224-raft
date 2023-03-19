@@ -154,11 +154,13 @@ func (s *RaftSurfstore) AppendEntries(ctx context.Context, input *AppendEntryInp
 
 	if s.isCrashed {
 		// if server is crashed, return ERR_SERVER_CRASHED
+		fmt.Println("appendEntries returning false because server is crashed")
 		return &AppendEntryOutput{Term: s.term, Success: false}, ERR_SERVER_CRASHED
 	} else {
 		// 1. Reply false if term < currentTerm (§5.1)
 		if input.Term < s.term {
 			// returning the current term and status of false
+			fmt.Println("appendEntries returning false because input.Term < s.term")
 			return &AppendEntryOutput{Term: s.term, Success: false}, nil
 		}
 		// if your term is less than the leader's term, you need to update your term
@@ -168,12 +170,14 @@ func (s *RaftSurfstore) AppendEntries(ctx context.Context, input *AppendEntryInp
 		// if input.prevLogIndex is greater than the length of the log, then return false
 		// need to get a longer inputEntries to append
 		if input.PrevLogIndex > int64(len(s.log)-1) {
+			fmt.Println("appendEntries returning false because input.PrevLogIndex > int64(len(s.log)-1)")
 			return &AppendEntryOutput{Term: s.term, Success: false}, nil
 		}
 
 		// 2. Reply false if log doesn’t contain an entry at prevLogIndex whose term
 		// matches prevLogTerm (§5.3)
 		if s.log[input.PrevLogIndex].Term != input.PrevLogTerm {
+			fmt.Println("appendEntries returning false because s.log[input.PrevLogIndex].Term != input.PrevLogTerm")
 			return &AppendEntryOutput{Term: s.term, Success: false}, nil
 		}
 		// ideal case where the prevLogIndex and prevLogTerm match with last entry in the log
