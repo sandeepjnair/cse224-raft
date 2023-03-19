@@ -150,7 +150,7 @@ func (s *RaftSurfstore) UpdateFile(ctx context.Context, filemeta *FileMetaData) 
 func (s *RaftSurfstore) AppendEntries(ctx context.Context, input *AppendEntryInput) (*AppendEntryOutput, error) {
 	// what does LeaderCommit mean and do? - latest commit index of the leader
 	// does entries contain the entire log or just the new entries? - just the new entries
-	fmt.Println("appendEntries called using server: ", s.serverId, "s.isLeader: ", s.isLeader, "s.isCrashed: ", s.isCrashed)
+	// fmt.Println("appendEntries called using server: ", s.serverId, "s.isLeader: ", s.isLeader, "s.isCrashed: ", s.isCrashed)
 
 	if s.isCrashed {
 		// if server is crashed, return ERR_SERVER_CRASHED
@@ -163,7 +163,7 @@ func (s *RaftSurfstore) AppendEntries(ctx context.Context, input *AppendEntryInp
 
 		// 1. Reply false if term < currentTerm (§5.1)
 		if input.Term < s.term {
-			fmt.Println("appendEntries returned false as input.Term < s.term")
+			fmt.Println("appendEntries returned false as input.Term < s.term", input.Term, s.term)
 			// returning the current term and status of false
 			return &AppendEntryOutput{Term: s.term, Success: false}, nil
 		}
@@ -171,7 +171,7 @@ func (s *RaftSurfstore) AppendEntries(ctx context.Context, input *AppendEntryInp
 		// if input.prevLogIndex is greater than the length of the log, then return false
 		// need to get a longer inputEntries to append
 		if input.PrevLogIndex > int64(len(s.log)-1) {
-			fmt.Println("appendEntries returned false as input.PrevLogIndex > int64(len(s.log)-1)")
+			fmt.Println("appendEntries returned false as input.PrevLogIndex > int64(len(s.log)-1)", input.PrevLogIndex, int64(len(s.log)-1))
 			return &AppendEntryOutput{Term: s.term, Success: false}, nil
 		}
 
@@ -307,7 +307,7 @@ func (s *RaftSurfstore) Restore(ctx context.Context, _ *emptypb.Empty) (*Success
 }
 
 func (s *RaftSurfstore) GetInternalState(ctx context.Context, empty *emptypb.Empty) (*RaftInternalState, error) {
-	time.Sleep(1000 * time.Millisecond)
+	time.Sleep(500 * time.Millisecond)
 	fileInfoMap, _ := s.metaStore.GetFileInfoMap(ctx, empty)
 	s.isLeaderMutex.RLock()
 	state := &RaftInternalState{
@@ -402,6 +402,7 @@ func (s *RaftSurfstore) callAppendEntries(idx int, addr string, resultChan chan 
 
 		// if the server responds with a higher term, then update the term and become a follower
 		if output.Term > s.term {
+			fmt.Println("came here with output.Term of ", output.Term, "and s.term of ", s.term, "and serverId of ", s.serverId)
 			s.term = output.Term
 			s.isLeaderMutex.Lock()
 			s.isLeader = false
@@ -413,6 +414,9 @@ func (s *RaftSurfstore) callAppendEntries(idx int, addr string, resultChan chan 
 		// if the server responds with a false, then decrement the prevLogIndex and try again
 		if !output.Success {
 			input.PrevLogIndex -= 1
+			if input.PrevLogIndex < 0 {
+				fmt.Println("####################################ITS HAPPENING")
+			}
 			input.PrevLogTerm = s.log[input.PrevLogIndex].Term
 			// append first element to input.Entries
 			input.Entries = append([]*UpdateOperation{s.log[input.PrevLogIndex+1]}, input.Entries...)

@@ -117,7 +117,7 @@ func InitRaftServers(cfgPath string, cfg surfstore.RaftConfig) []*exec.Cmd {
 func CheckInternalState(isLeader *bool, term *int64, log []*surfstore.UpdateOperation, fileMetaMap map[string]*surfstore.FileMetaData, server surfstore.RaftSurfstoreClient, ctx context.Context) (bool, error) {
 	state, err := server.GetInternalState(ctx, &emptypb.Empty{})
 	fmt.Println("actual state: ", state)
-	fmt.Println("what we want: isLeader: ", *isLeader, " term:", *term, "log: ", log, " fileMetaMap: ", fileMetaMap)
+	// fmt.Println("what we want: isLeader: ", *isLeader, " term:", *term, "log: ", log, " fileMetaMap: ", fileMetaMap)
 	if err != nil {
 		return false, fmt.Errorf("could not get internal state: %w", err)
 	}
