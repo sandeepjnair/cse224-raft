@@ -157,16 +157,17 @@ func (s *RaftSurfstore) AppendEntries(ctx context.Context, input *AppendEntryInp
 		fmt.Println("appendEntries returning false because server is crashed")
 		return &AppendEntryOutput{Term: s.term, Success: false}, ERR_SERVER_CRASHED
 	} else {
+		// if your term is less than the leader's term, you need to update your term
+		if input.Term > s.term {
+			s.term = input.Term
+		}
 		// 1. Reply false if term < currentTerm (§5.1)
 		if input.Term < s.term {
 			// returning the current term and status of false
 			fmt.Println("appendEntries returning false because input.Term < s.term")
 			return &AppendEntryOutput{Term: s.term, Success: false}, nil
 		}
-		// if your term is less than the leader's term, you need to update your term
-		if input.Term > s.term {
-			s.term = input.Term
-		}
+
 		// if input.prevLogIndex is greater than the length of the log, then return false
 		// need to get a longer inputEntries to append
 		if input.PrevLogIndex > int64(len(s.log)-1) {
