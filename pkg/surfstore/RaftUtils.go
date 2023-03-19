@@ -61,17 +61,18 @@ func NewRaftServer(id int64, config RaftConfig) (*RaftSurfstore, error) {
 	// }
 
 	log := make([]*UpdateOperation, 0)
-	log = append(log, &UpdateOperation{Term: 0, FileMetaData: nil})
+	// log = append(log, &UpdateOperation{Term: 0, FileMetaData: nil})
 	server := RaftSurfstore{
 		serverId:       id,
 		isLeader:       false,
 		isLeaderMutex:  &isLeaderMutex,
 		term:           0,
 		metaStore:      NewMetaStore(config.BlockAddrs),
-		RaftAddrs:      config.RaftAddrs, // recently added not sure if this is correct
+		RaftAddrs:      config.RaftAddrs,
 		log:            log,
 		isCrashed:      false,
 		isCrashedMutex: &isCrashedMutex,
+		commitIndex:    -1,
 	}
 
 	return &server, nil

@@ -4,6 +4,7 @@ import (
 	context "context"
 	"fmt"
 	"log"
+	"math"
 	"strings"
 	"sync"
 
@@ -157,6 +158,7 @@ func (s *RaftSurfstore) AppendEntries(ctx context.Context, input *AppendEntryInp
 	} else {
 		// 1. Reply false if term < currentTerm (§5.1)
 		if input.Term < s.term {
+			fmt.Println("here1")
 			// returning the current term and status of false
 			return &AppendEntryOutput{Term: s.term, Success: false}, nil
 		}
@@ -164,15 +166,25 @@ func (s *RaftSurfstore) AppendEntries(ctx context.Context, input *AppendEntryInp
 		if input.Term > s.term {
 			s.term = input.Term
 		}
+		if len(s.log) == 0 {
+			s.log = input.Entries
+			return &AppendEntryOutput{ServerId: s.serverId, Term: s.term, Success: true, MatchedIndex: input.PrevLogIndex}, nil
+		}
+		//handle empty log case
+		if input.PrevLogIndex == -1 {
+			return &AppendEntryOutput{ServerId: s.serverId, Term: s.term, Success: true, MatchedIndex: input.PrevLogIndex}, nil
+		}
 		// if input.prevLogIndex is greater than the length of the log, then return false
 		// need to get a longer inputEntries to append
 		if input.PrevLogIndex > int64(len(s.log)-1) {
+			fmt.Println("here2", input.PrevLogIndex, "len(s.log)-1", len(s.log)-1)
 			return &AppendEntryOutput{Term: s.term, Success: false}, nil
 		}
 
 		// 2. Reply false if log doesn’t contain an entry at prevLogIndex whose term
 		// matches prevLogTerm (§5.3)
 		if s.log[input.PrevLogIndex].Term != input.PrevLogTerm {
+			fmt.Println("here3")
 			return &AppendEntryOutput{Term: s.term, Success: false}, nil
 		}
 		// ideal case where the prevLogIndex and prevLogTerm match with last entry in the log
@@ -269,7 +281,7 @@ func (s *RaftSurfstore) SendHeartbeat(ctx context.Context, _ *emptypb.Empty) (*S
 		}
 		if positive_responses > len(s.RaftAddrs)/2 {
 			s.commitIndex = int64(len(s.log) - 1)
-			if s.log[len(s.log)-1].FileMetaData != nil {
+			if s.commitIndex > 0 && s.log[len(s.log)-1].FileMetaData != nil {
 				s.metaStore.UpdateFile(ctx, s.log[len(s.log)-1].FileMetaData)
 			}
 			return &Success{Flag: true}, nil
@@ -309,6 +321,7 @@ func (s *RaftSurfstore) GetInternalState(ctx context.Context, empty *emptypb.Emp
 		Log:      s.log,
 		MetaMap:  fileInfoMap,
 	}
+	// a := &FileInfoMap
 	s.isLeaderMutex.RUnlock()
 	fmt.Println("just got internal state from server with id: ", s.serverId, "in term", s.term, "with state::", state)
 	return state, nil
@@ -351,11 +364,22 @@ func (s *RaftSurfstore) callAppendEntries(idx int, addr string, resultChan chan 
 	// you hope that append entries will verify that the last entry in your log is the same as the last entry in their log
 	// ensuring that you're in sync if not you decrememt your prevLogIndex and try again until you fins a point you're in
 	// sync and then you can replace the idx servers log with your (leader) log
-	fmt.Println(" inside callappendEntries on server with id", idx, "from server with id", s.serverId, "with term", s.term, "and len(s.log) of ", len(s.log), "and commitIndex of ", s.commitIndex, "PrevLogIndex:", int64(len(s.log)-1), "PrevLogTerm:", s.log[len(s.log)-1].Term)
+	if len(s.log) == 0 {
+		fmt.Println(" inside callappendEntries on server with id", idx, "from server with id", s.serverId, "with term", s.term, "and len(s.log) of ", len(s.log), "and commitIndex of ", s.commitIndex, "PrevLogIndex:", int64(len(s.log)-1))
+	} else {
+		fmt.Println(" inside callappendEntries on server with id", idx, "from server with id", s.serverId, "with term", s.term, "and len(s.log) of ", len(s.log), "and commitIndex of ", s.commitIndex, "PrevLogIndex:", int64(len(s.log)-1), "PrevLogTerm:", s.log[int(math.Max(float64(len(s.log)-1), 0))].Term)
+	}
+	PrevLogIndex := int64(-1)
+	PrevLogTerm := int64(-1)
+
+	if len(s.log) != 0 {
+		PrevLogIndex = int64(len(s.log) - 1)
+		PrevLogTerm = s.log[len(s.log)-1].Term
+	}
 	input := &AppendEntryInput{
 		Term:         s.term,
-		PrevLogIndex: int64(len(s.log) - 1),
-		PrevLogTerm:  s.log[len(s.log)-1].Term,
+		PrevLogIndex: PrevLogIndex,
+		PrevLogTerm:  PrevLogTerm,
 		Entries:      []*UpdateOperation{},
 		LeaderCommit: s.commitIndex,
 	}

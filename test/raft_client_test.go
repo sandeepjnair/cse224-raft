@@ -20,8 +20,8 @@ func TestSyncTwoClientsSameFileLeaderFailure(t *testing.T) {
 
 	worker1 := InitDirectoryWorker("test0", SRC_PATH)
 	worker2 := InitDirectoryWorker("test1", SRC_PATH)
-	defer worker1.CleanUp()
-	defer worker2.CleanUp()
+	// defer worker1.CleanUp()
+	// defer worker2.CleanUp()
 
 	//clients add different files
 	file1 := "multi_file1.txt"
