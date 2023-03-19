@@ -6,6 +6,7 @@ import (
 	"log"
 	"strings"
 	"sync"
+	"time"
 
 	grpc "google.golang.org/grpc"
 	emptypb "google.golang.org/protobuf/types/known/emptypb"
@@ -105,7 +106,7 @@ func (s *RaftSurfstore) GetBlockStoreAddrs(ctx context.Context, empty *emptypb.E
 }
 
 func (s *RaftSurfstore) UpdateFile(ctx context.Context, filemeta *FileMetaData) (*Version, error) {
-	fmt.Println("raftsurfstore.UpdateFile called with filemeta: ", filemeta)
+	fmt.Println("raftsurfstore.UpdateFile called with filemeta: ", filemeta, " on server ", s.serverId, " with isLeader: ", s.isLeader)
 
 	// if you're not a leader, you need to give back a ERR_NOT_LEADER error
 	if !s.isLeader {
@@ -301,6 +302,7 @@ func (s *RaftSurfstore) Restore(ctx context.Context, _ *emptypb.Empty) (*Success
 }
 
 func (s *RaftSurfstore) GetInternalState(ctx context.Context, empty *emptypb.Empty) (*RaftInternalState, error) {
+	time.Sleep(1000 * time.Millisecond)
 	fileInfoMap, _ := s.metaStore.GetFileInfoMap(ctx, empty)
 	s.isLeaderMutex.RLock()
 	state := &RaftInternalState{
@@ -376,7 +378,7 @@ func (s *RaftSurfstore) callAppendEntries(idx int, addr string, resultChan chan 
 		defer conn.Close()
 
 		client := NewRaftSurfstoreClient(conn)
-
+		fmt.Println("trying to call appendEntries on server with id", idx, "using server with id", s.serverId, "with term", s.term, "and len(s.log) of ", len(s.log), "and commitIndex of ", s.commitIndex, "PrevLogIndex:", input.PrevLogIndex, "PrevLogTerm:", input.PrevLogTerm)
 		// call appendEntries on the server
 		output, err := client.AppendEntries(context.Background(), input)
 		if err != nil {
