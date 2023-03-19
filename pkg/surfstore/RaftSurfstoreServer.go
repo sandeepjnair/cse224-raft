@@ -302,7 +302,7 @@ func (s *RaftSurfstore) Restore(ctx context.Context, _ *emptypb.Empty) (*Success
 }
 
 func (s *RaftSurfstore) GetInternalState(ctx context.Context, empty *emptypb.Empty) (*RaftInternalState, error) {
-	time.Sleep(1000 * time.Millisecond)
+	time.Sleep(2000 * time.Millisecond)
 	fileInfoMap, _ := s.metaStore.GetFileInfoMap(ctx, empty)
 	s.isLeaderMutex.RLock()
 	state := &RaftInternalState{
